@@ -26,7 +26,7 @@ easy_install python_gnupg Twisted DateUtils pyparsing jsonrpc
 
 Was used only under Python 2.7, most likely will not work under Python 3.
 
-##Using opnly the parser
+##Using only the parser
 Use process* functions in agent.py to parse decrypted MPEx output string to structured data.
 
 ##Running the agent
@@ -39,7 +39,7 @@ PORT = 8007
 
 This sets the HTTP/JSONRPC listening port. 
 
-Run ./mpexagent.py . It will ask for your GPG passphrase. While it is running, the 
+Run agent.py . It will ask for your GPG passphrase. While it is running, the 
 passphrase will stay cached in memory. It keeps running in foreground, daemon mode is not 
 supported yet. It logs everything into mpexagent.log file in current directory, using 
 python logging standard library.
