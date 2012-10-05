@@ -1,29 +1,99 @@
 #!/usr/bin/python
 
+import logging
+
+if __name__ == '__main__':
+    logging.basicConfig(filename='mpex.log',level=logging.DEBUG)
+
 import gnupg
 import urllib
-import urllib2
 import sys
+import time
+from twisted.internet import reactor
+from twisted.web.client import Agent, HTTPConnectionPool
+from twisted.web.http_headers import Headers
+from twisted.web.client import FileBodyProducer
+from StringIO import StringIO
+from twisted.internet.protocol import Protocol
+from twisted.internet.defer import Deferred
+from pprint import pformat
 
-class MPEx:
-    def __init__(self):
+log = logging.getLogger(__name__)
+
+from gnupg import logger as gnupglogger
+#gnupg likes to log sensitive material in debug mode
+gnupglogger.setLevel(logging.INFO)
+class StringRcv(Protocol):
+    def __init__(self,finished):
+        self.data = ''
+        self.finished = finished
+
+
+    def dataReceived(self, bytes):
+        self.data += bytes
+
+
+    def connectionLost(self, reason):
+        log.debug('%s Data: %s', reason.value, self.data)
+        self.finished.callback(self.data)
+class MPEx(object):
+    testdata = None
+    def __init__(self, debug=False):
         self.gpg = gnupg.GPG()
         self.mpex_url = 'http://polimedia.us/bitcoin/mpex.php'
         self.mpex_fingerprint = 'F1B69921'
         self.passphrase = None
+        self.debug = debug
+        if(self.debug) :
+            self.df = open("mpex_%d.txt" % time.time(),'w')
+        pool = HTTPConnectionPool(reactor)
+        #close connections at same time as server to prevent ResponseNeverReceived error
+        #timeout can be determined automatically from Keep-Alive header
+        pool.cachedConnectionTimeout = 4
+        self.agent = Agent(reactor, pool=pool)
+
 
     def command(self, command):
+        if (self.debug) :self.df.write(command)
+        log.info("command('%s')",command)
+        if (self.testdata):
+            log.debug('returning testdata instead:%s',self.testdata)
+            return self.testdata
         if self.passphrase == None: return None
         signed_data = self.gpg.sign(command, passphrase=self.passphrase)
         encrypted_ascii_data = self.gpg.encrypt(str(signed_data), self.mpex_fingerprint, passphrase=self.passphrase)
         data = urllib.urlencode({'msg' : str(encrypted_ascii_data)})
-        req = urllib2.Request(self.mpex_url, data)
-        response = urllib2.urlopen(req)
-        result = response.read()
+        body = FileBodyProducer(StringIO(data))
+        d = self.agent.request(
+            'POST',
+            self.mpex_url,
+            Headers({'Content-Type': ['application/x-www-form-urlencoded'], 
+                #'Connection': ['Keep-Alive'] #redundant in HTTP/1.1
+                }),
+            body)
+        d.addCallback(self.cbCommand) 
+        #TODO add retry in case of ResponseNeverReceived error, 
+        #most likely caused by closing of persistent connection by server
+        return d
+    def cbCommand(self,response):
+        log.info('Response: %s %s %s', response.version, response.code, response.phrase)
+        log.debug('Response headers: %s', pformat(list(response.headers.getAllRawHeaders())))
+        finished = Deferred()
+        response.deliverBody(StringRcv(finished))
+        finished.addCallback(self.decrypt)
+        return finished
+    def decrypt(self,result):
+        if (self.debug) : 
+            self.df.write(result)
+            log.debug(result)
         reply = str(self.gpg.decrypt(result, passphrase=self.passphrase))
+        if (self.debug) : 
+            self.df.write(reply)
+            self.df.flush()
+        log.debug('decrypted reply:%s',reply)
         if reply == '': return None
         return reply
-
+        
     def checkKey(self):
         keys = self.gpg.list_keys()
         for key in keys:
@@ -31,9 +101,16 @@ class MPEx:
                 return True
         return False
 
+def _processReply(reply):
+    if reply == None:
+        print 'Couldn\'t decode the reply from MPEx, perhaps you didn\'t sign the key? try running'
+        print 'gpg --sign-key F1B69921'
+        exit()
+    print reply
+    
 if __name__ == '__main__':
     from getpass import getpass
-    mpex = MPEx()
+    mpex = MPEx(debug=True)
     if not mpex.checkKey():
         print 'You have not added MPExes keys. Please run...'
         print 'gpg --search-keys "F1B69921"'
@@ -44,10 +121,9 @@ if __name__ == '__main__':
         print 'Example: mpex.py STAT'
         exit()
     mpex.passphrase = getpass("Enter your GPG passphrase: ")
-    reply = mpex.command(sys.argv[1])
-    if reply == None:
-        print 'Couldn\'t decode the reply from MPEx, perhaps you didn\'t sign the key? try running'
-        print 'gpg --sign-key F1B69921'
-        exit()
-    print reply
-
+    d = mpex.command(sys.argv[1])
+    d.addCallback(_processReply)
+    d.addCallback(lambda value: reactor.stop())
+    d.addErrback(log.error)
+    d.addErrback(lambda error : reactor.stop())
+    reactor.run()
