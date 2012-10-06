@@ -29,12 +29,14 @@ from jsonrpc.server import ServerEvents, JSON_RPC
 from pprint import pformat
 
 from decimal import Decimal
+from datetime import datetime
+from dateutil.tz import tzutc
 
 SATOSHI=Decimal(100000000)
 #@+node:jurov.20121005183137.2121: ** processStat
 def processStat(string):
     """Parses STAT response into in following structure, adapted to easy conversion to JSON:
-    { 'timestamp': '2012-04-22T22:42:25', # all dates in isoformat() 
+    { 'timestamp': '2012-04-22T22:42:25+0000', # all dates in isoformat() 
         'unixTimeStamp': 1335127345, #TODO STAT looks like it provides fractions of second too
         'current_holdings': {'CxBTC': 1438734341, #all btc amounts are converted to satoshi
                       'O.BTCUSD.P060T': 10,
@@ -74,7 +76,7 @@ def processStat(string):
     data = parseStat(string)
     #TODO parse exception?
     #get rid of decimals
-    if 'unixTimeStamp' in data:
+    if 'current_holdings' in data:
         holds = data['current_holdings']
         for item in holds:
             if item == 'CxBTC':
@@ -83,6 +85,8 @@ def processStat(string):
                 holds[item] =  int(holds[item])
     if 'unixTimeStamp' in data:
         data['unixTimeStamp'] = int(data['unixTimeStamp'])
+        data['timestamp'] = datetime.fromtimestamp(data['unixTimeStamp'],tzutc())
+        
     if 'timestamp' in data:
         data['timestamp'] = data['timestamp'].isoformat()
         
