@@ -3,8 +3,7 @@ MPExAgent
 
 It allows you to access MPEx by any JSONRPC-capable application, from local or 
 remote  machine. MPEx replies for all supported commands are extracted and parsed into 
-easily processable form. It is based on Twisted engine and tuned to HTTP/1.1-pipeline your commands to MPEx,
-so it should handle any reasonable volume.
+easily processable form. It is based on Twisted engine, so it should handle any reasonable volume.
 
 *Warning: This MPExAgent version does not support any authentication! Anyone 
 who has access to the listening port, can freely issue MPEx commands in your name. Try it only behind firewall.
@@ -55,6 +54,7 @@ Output data structure for all supported commands is documented in MPExAgent
 methods in agent.py. 
 Supported functions are at the moment (lowercase):
 * stat
+* statjson
 * deposit
 * neworder
 * exercise
@@ -71,3 +71,9 @@ To ease JSON processing, following minor updates are done to output data:
 * all dates are converted into strings using ISO format (using isoformat()). 
   sampleclient.py converts them back to Python dates in deserializeStat().
 
+As MPEx now offers STATJSON call, stat is deprecated and will be removed. The 
+statjson function improves original data structure for easier processing:
+* all integers come wrapped as strings, statjson unwraps them
+* Holdings and Book are converted into proper dicts, so you can access 
+  balances/orders like data["Holdings"]["CxBTC"] instead of iterating whole 
+  list.
