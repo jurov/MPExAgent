@@ -32,6 +32,8 @@ from decimal import Decimal
 from datetime import datetime
 from dateutil.tz import tzutc
 
+import json
+
 SATOSHI=Decimal(100000000)
 #@+node:jurov.20121005183137.2121: ** processStat
 def processStat(string):
@@ -112,6 +114,118 @@ def processStat(string):
             div['date'] = div['date'].isoformat()
             
     return data    
+#@+node:jurov.20121028200650.2140: ** processStatJson
+def processStatJson(string):
+    """{"Header":[{"Name":"Juraj Variny"},{"Fingerprint":"BBB0A99950037551F533850A677ABD62D0AEE7D7"},{"DateTime":"Sunday the 28th of October 2012 at 07:11:07 PM"},{"Microtime":"0.32830100 1351451467"}],
+    "Holdings":[{"CxBTC":"452929725"},
+    {"S.MPOE":"481389"},
+    {"S.BVPS":"990"},
+    {"S.DICE":"110"},
+    {"md5Checksum":"1d21d19cb5f72277086f5ad469ad573c"}],
+    "Book":[{"2975392":{"MPSIC":"S.MPOE", "BS":"B", "Quantity":"20000", "Price":"21000"}},
+    {"md5Checksum":"356265b8eb6a38ac64536447c0070954"}],
+    "OptionsCover":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}],
+    "TradeHistory":[{"1351516338":{"MPSIC":"S.DICE", "BS":"B", "Quantity":"10", "Price":"339944"}},
+    {"md5Checksum":"6e67ed81701104947cf8b5f01eccb1b6"}],
+    "Dividends":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}],
+    "Exercises":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}]}
+    """
+    #extract only the json part
+    startidx = string.index('{')
+    endidx = len(string) - string[::-1].index('}')
+    string = string[startidx:endidx]
+    #parse json
+    data = json.loads(string)
+    #remove brain damage
+    hdr = {}
+    if "Header" in data:
+        for item in data["Header"]:
+            hdr.update(item)
+            key = item.keys()[0]
+            if key == "Microtime":
+                times = item[key].split(" ")
+                dt = datetime.fromtimestamp(int(times[1]),tzutc())
+                dt.replace(microsecond=int(Decimal(times[0])*1000000))
+                data["timestamp"] = dt
+        
+    data["Header"] = hdr
+        
+    holds = {}
+    if "Holdings" in data:
+        for item in data["Holdings"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                continue
+            if key in holds and int(item[key]) != holds[key]:
+                #same mpsic twice with diff amount... wtf?
+                raise ValueError("MPSIC twice in Holdings: %s" % key)
+            holds[key] = int(item[key])
+            
+    data["Holdings"] = holds
+
+    orders = {}                
+    if "Book" in data:            
+        for item in data["Book"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                continue
+            orddata = item[key]
+            orddata['Quantity'] = int(orddata['Quantity'])
+            orddata['Price'] = int(orddata['Price'])
+            #TODO
+            #dt = datetime.fromtimestamp(int(orddata["Expires"]),tzutc())
+            #orddata['Expires'] = dt
+            if key in holds and orddata != orders[key]:
+                #same order id twice with diff data... wtf?
+                raise ValueError("Order ID twice in Book: %s" % key)
+            orders[key]=orddata
+    data["Book"] = orders
+
+    trades = []
+    if "TradeHistory" in data:
+        for item in data["TradeHistory"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                continue
+            dt = datetime.fromtimestamp(int(key),tzutc())
+            tradedata = item[key]
+            tradedata['Quantity'] = int(tradedata['Quantity'])
+            tradedata['Price'] = int(tradedata['Price'])
+            tradedata['Date'] = dt
+            trades.append(tradedata)
+            
+    data["TradeHistory"] = trades
+    
+    #TODO dividends
+    divs = []
+    if "Dividends" in data:
+        for item in data["Dividends"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                continue
+            #dt = datetime.fromtimestamp(int(key),tzutc())
+            #divdata = item[key]
+            #divdata['Quantity'] = int(tradedata['Quantity'])
+            #divdata['Price'] = int(tradedata['Price'])
+            #divdata['Date'] = dt
+            divs.append(item)
+    data["Dividends"] = divs
+    exers = []
+    if "Exercises" in data:
+        for item in data["Exercises"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                continue
+            #dt = datetime.fromtimestamp(int(key),tzutc())
+            #exdata = item[key]
+            #exdata['Quantity'] = int(tradedata['Quantity'])
+            #exdata['Price'] = int(tradedata['Price'])
+            #exdata['Date'] = dt
+            exers.append(item)
+    data["Exercises"] = exers
+        
+    return data        
+    
 #@+node:jurov.20121005183137.2122: ** processNewOrder
 def processNewOrder(string):
     """Parses response to BUY/SELL command and returns dict in format:
@@ -207,6 +321,26 @@ class MPExAgent(MPEx):
         d = self.command('STAT')
         d.addCallback(statCb)
         return d
+    #@+node:jurov.20121028200650.2137: *3* statjson
+    def statjson(self):
+        """
+        No parameters. 
+        
+        Deferred result is either dict - result of processStat() if parsing STAT request was successful, 
+     or simple False value.}        
+        """
+        #@+<<statjsonCb>>
+        #@+node:jurov.20121028200650.2139: *4* <<statjsonCb>>
+        def statjsonCb(reply):
+            if reply is None:
+                log.error('STATJSON failed')
+                return False
+            return processStatJson(reply)
+            
+        #@-<<statjsonCb>>
+        d = self.command('STATJSON')
+        d.addCallback(statjsonCb)
+        return d
     #@+node:jurov.20121005183137.2130: *3* cancel
     def cancel(self,orderid):
         """Cancel order with given mpex id. Using strings for orderid is preferred.
@@ -296,7 +430,7 @@ class MPExAgent(MPEx):
     #@-others
 #@+node:jurov.20121005183137.2139: ** class RPCServer
 class RPCServer(ServerEvents):
-    methods = set(['neworder','stat','cancel','deposit','withdraw','exercise','echo'])
+    methods = set(['neworder','stat','statjson','cancel','deposit','withdraw','exercise','echo'])
     agent = None
     #@+others
     #@+node:jurov.20121005183137.2140: *3* log
