@@ -145,8 +145,8 @@ def processStatJson(string):
             if key == "Microtime":
                 times = item[key].split(" ")
                 dt = datetime.fromtimestamp(int(times[1]),tzutc())
-                dt.replace(microsecond=int(Decimal(times[0])*1000000))
-                data["timestamp"] = dt
+                dt = dt.replace(microsecond=int(Decimal(times[0])*1000000))
+                data["timestamp"] = dt.isoformat()
         
     data["Header"] = hdr
         
@@ -174,7 +174,7 @@ def processStatJson(string):
             orddata['Price'] = int(orddata['Price'])
             #TODO
             #dt = datetime.fromtimestamp(int(orddata["Expires"]),tzutc())
-            #orddata['Expires'] = dt
+            #orddata['Expires'] = dt.isoformat()
             if key in holds and orddata != orders[key]:
                 #same order id twice with diff data... wtf?
                 raise ValueError("Order ID twice in Book: %s" % key)
@@ -191,7 +191,7 @@ def processStatJson(string):
             tradedata = item[key]
             tradedata['Quantity'] = int(tradedata['Quantity'])
             tradedata['Price'] = int(tradedata['Price'])
-            tradedata['Date'] = dt
+            tradedata['Date'] = dt.isoformat()
             trades.append(tradedata)
             
     data["TradeHistory"] = trades
@@ -207,7 +207,7 @@ def processStatJson(string):
             #divdata = item[key]
             #divdata['Quantity'] = int(tradedata['Quantity'])
             #divdata['Price'] = int(tradedata['Price'])
-            #divdata['Date'] = dt
+            #divdata['Date'] = dt.isoformat()
             divs.append(item)
     data["Dividends"] = divs
     exers = []
@@ -220,7 +220,7 @@ def processStatJson(string):
             #exdata = item[key]
             #exdata['Quantity'] = int(tradedata['Quantity'])
             #exdata['Price'] = int(tradedata['Price'])
-            #exdata['Date'] = dt
+            #exdata['Date'] = dt.isoformat()
             exers.append(item)
     data["Exercises"] = exers
         
