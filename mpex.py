@@ -38,7 +38,7 @@ class StringRcv(Protocol):
         self.finished.callback(self.data)
 class MPEx(object):
     testdata = None
-    def __init__(self, debug=False):
+    def __init__(self, reactor, debug=False, pool=None):
         self.gpg = gnupg.GPG()
         self.mpex_url = 'http://polimedia.us/bitcoin/mpex.php'
         self.mpex_fingerprint = 'F1B69921'
@@ -46,10 +46,6 @@ class MPEx(object):
         self.debug = debug
         if(self.debug) :
             self.df = open("mpex_%d.txt" % time.time(),'w')
-        pool = HTTPConnectionPool(reactor)
-        #close connections at same time as server to prevent ResponseNeverReceived error
-        #timeout can be determined automatically from Keep-Alive header
-        pool.cachedConnectionTimeout = 4
         self.agent = Agent(reactor, pool=pool)
 
 
@@ -110,7 +106,7 @@ def _processReply(reply):
     
 if __name__ == '__main__':
     from getpass import getpass
-    mpex = MPEx(debug=True)
+    mpex = MPEx(reactor,debug=True)
     if not mpex.checkKey():
         print 'You have not added MPExes keys. Please run...'
         print 'gpg --search-keys "F1B69921"'
