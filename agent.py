@@ -31,10 +31,19 @@ from pprint import pformat
 from decimal import Decimal
 from datetime import datetime
 from dateutil.tz import tzutc
+from argparse import ArgumentParser
 
 import json
 
 SATOSHI=Decimal(100000000)
+#@+node:jurov.20121030135122.2157: ** parse_args
+def parse_args():
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("-p","--port", help="Listening port(default:8007)", type=int, choices=range(1, 65535),default=8007,required = False)
+    args = parser.parse_args()
+    
+    return args
+
 #@+node:jurov.20121005183137.2121: ** processStat
 def processStat(string):
     """Parses STAT response into in following structure, adapted to easy conversion to JSON:
@@ -473,11 +482,9 @@ def main():
         root = JSON_RPC().customize(RPCServer)
         root.eventhandler.agent = mpexagent
         site = server.Site(root)    
-        
-        # 8007 is the port you want to run under. Choose something >1024
-        PORT = 8007
-        log.info('Listening on port %d...', PORT)
-        reactor.listenTCP(PORT, site)
+        args = parse_args()
+        log.info('Listening on port %d...', args.port)
+        reactor.listenTCP(args.port, site)
         reactor.run()
     except KeyboardInterrupt:
         print '^C received, shutting down server'
