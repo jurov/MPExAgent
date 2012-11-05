@@ -136,7 +136,9 @@ def processStatJson(string):
     "OptionsCover":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}],
     "TradeHistory":[{"1351516338":{"MPSIC":"S.DICE", "BS":"B", "Quantity":"10", "Price":"339944"}},
     {"md5Checksum":"6e67ed81701104947cf8b5f01eccb1b6"}],
-    "Dividends":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}],
+    "Dividends":[{"1351814184":{"MPSIC":"B.MPCD.A", "Sum":"99500000"}},
+{"1351813083":{"MPSIC":"B.MPCD.A", "Sum":"1990000"}},
+{"md5Checksum":"5640523ac1976313c8a1b0af0c004d8f"}],
     "Exercises":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}]}
     """
     #extract only the json part
@@ -205,20 +207,20 @@ def processStatJson(string):
             
     data["TradeHistory"] = trades
     
-    #TODO dividends
     divs = []
     if "Dividends" in data:
         for item in data["Dividends"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
                 continue
-            #dt = datetime.fromtimestamp(int(key),tzutc())
-            #divdata = item[key]
-            #divdata['Quantity'] = int(tradedata['Quantity'])
-            #divdata['Price'] = int(tradedata['Price'])
-            #divdata['Date'] = dt.isoformat()
-            divs.append(item)
+            dt = datetime.fromtimestamp(int(key),tzutc())
+            divdata = item[key]
+            divdata['Sum'] = int(divdata['Sum'])
+            divdata['Date'] = dt.isoformat()
+            divs.append(divdata)
     data["Dividends"] = divs
+    
+    #TODO exercises
     exers = []
     if "Exercises" in data:
         for item in data["Exercises"]:

@@ -38,7 +38,7 @@ class StringRcv(Protocol):
         self.finished.callback(self.data)
 class MPEx(object):
     testdata = None
-    def __init__(self, reactor, debug=False, pool=None):
+    def __init__(self, debug=False, pool=None):
         self.gpg = gnupg.GPG()
         self.mpex_url = 'http://polimedia.us/bitcoin/mpex.php'
         self.mpex_fingerprint = 'F1B69921'
