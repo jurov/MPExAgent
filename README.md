@@ -32,11 +32,8 @@ Use process* functions in agent.py to parse decrypted MPEx output string to stru
 It is based on pyMPEx and expects/uses current user's default GPG key set up in exactly the same way. If you 
 are successfully using pyMPEx, the agent should work out of the box.
 
-In the bottom of agent.py, there is port setting
-
-PORT = 8007
-
-This sets the HTTP/JSONRPC listening port. 
+HTTP/JSONRPC listening port is set by -p commandline switch, if omitted, default 
+port is 8007. Path for JSONRPC calls is /jsonrpc . 
 
 Run agent.py . It will ask for your GPG passphrase. While it is running, the 
 passphrase will stay cached in memory. It keeps running in foreground, daemon mode is not 

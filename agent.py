@@ -31,15 +31,17 @@ from pprint import pformat
 from decimal import Decimal
 from datetime import datetime
 from dateutil.tz import tzutc
-from argparse import ArgumentParser
+import argparse 
 
 import json
 
 SATOSHI=Decimal(100000000)
 #@+node:jurov.20121030135122.2157: ** parse_args
 def parse_args():
-    parser = ArgumentParser(description=__doc__)
-    parser.add_argument("-p","--port", help="Listening port(default:8007)", type=int, choices=range(1, 65535),default=8007,required = False)
+    parser = argparse.ArgumentParser(description=__doc__, epilog=" -p PORT listen using tcp port PORT (default:8007)")
+    #TODO argparse insists on enumerating all 65535 ports, so suppress help message
+    #help="Listening port(default:8007)",
+    parser.add_argument("-p","--port", help=argparse.SUPPRESS, type=int, choices=range(1, 65535),default=8007,required = False)
     args = parser.parse_args()
     
     return args
@@ -478,13 +480,13 @@ class RPCServer(ServerEvents):
     #@-others
 #@+node:jurov.20121005183137.2144: ** main
 def main():
+    args = parse_args()
     try:
         mpexagent = MPExAgent()
         mpexagent.passphrase = getpass("Enter your GPG passphrase: ")
         root = JSON_RPC().customize(RPCServer)
         root.eventhandler.agent = mpexagent
         site = server.Site(root)    
-        args = parse_args()
         log.info('Listening on port %d...', args.port)
         reactor.listenTCP(args.port, site)
         reactor.run()
