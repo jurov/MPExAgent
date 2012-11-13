@@ -87,6 +87,9 @@ class MPEx(object):
             self.df.write(reply)
             self.df.flush()
         log.debug('decrypted reply:%s',reply)
+        if not self.gpg.verify(reply):
+            log.error('Invalid Signature,ignoring data!')
+            reply = None
         if reply == '': return None
         return reply
         
