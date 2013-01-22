@@ -162,12 +162,13 @@ def processStatJson(string):
                 data["timestamp"] = dt.isoformat()
         
     data["Header"] = hdr
-        
+    chksums = {}
     holds = {}
     if "Holdings" in data:
         for item in data["Holdings"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
+                chksums["Holdings"] = item[key]
                 continue
             if key in holds and int(item[key]) != holds[key]:
                 #same mpsic twice with diff amount... wtf?
@@ -181,6 +182,7 @@ def processStatJson(string):
         for item in data["Book"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
+                chksums["Book"] = item[key]
                 continue
             orddata = item[key]
             orddata['Quantity'] = int(orddata['Quantity'])
@@ -199,6 +201,7 @@ def processStatJson(string):
         for item in data["TradeHistory"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
+                chksums["TradeHistory"] = item[key]
                 continue
             dt = datetime.fromtimestamp(int(key),tzutc())
             tradedata = item[key]
@@ -214,6 +217,7 @@ def processStatJson(string):
         for item in data["Dividends"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
+                chksums["Dividends"] = item[key]
                 continue
             dt = datetime.fromtimestamp(int(key),tzutc())
             divdata = item[key]
@@ -228,6 +232,7 @@ def processStatJson(string):
         for item in data["Exercises"]:
             key = item.keys()[0]
             if key == 'md5Checksum':
+                chksums["Exercises"] = item[key]
                 continue
             #dt = datetime.fromtimestamp(int(key),tzutc())
             #exdata = item[key]
@@ -236,6 +241,8 @@ def processStatJson(string):
             #exdata['Date'] = dt.isoformat()
             exers.append(item)
     data["Exercises"] = exers
+    
+    data["md5Checksum"] = chksums
         
     return data        
     
