@@ -208,6 +208,13 @@ def processStatJson(string):
             tradedata['Quantity'] = int(tradedata['Quantity'])
             tradedata['Price'] = int(tradedata['Price'])
             tradedata['Date'] = dt.isoformat()
+            if(tradedata['BS'] == 'X'):
+                # trade was to myself - split to 'B' and 'S'
+                tradedata['BS'] = 'B'
+                trades.append(tradedata)
+                tradedata = tradedata.copy()
+                tradedata['BS'] = 'S'
+                
             trades.append(tradedata)
             
     data["TradeHistory"] = trades
