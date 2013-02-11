@@ -23,10 +23,13 @@ log = logging.getLogger(__name__)
 from gnupg import logger as gnupglogger
 #gnupg likes to log sensitive material in debug mode
 gnupglogger.setLevel(logging.INFO)
+
+TIMEOUT = 120 # Last-resort timeout in seconds for the whole request
 class StringRcv(Protocol):
-    def __init__(self,finished):
+    def __init__(self,finished,timeout = None):
         self.data = ''
         self.finished = finished
+        self.timeout = timeout
 
 
     def dataReceived(self, bytes):
@@ -34,7 +37,9 @@ class StringRcv(Protocol):
 
 
     def connectionLost(self, reason):
-        log.debug('%s Data: %s', reason.value, self.data)
+        #log.debug('%s Data: %s', reason.value, self.data)
+        if self.timeout:
+            self.timeout.cancel()
         self.finished.callback(self.data)
 class MPEx(object):
     testdata = None
@@ -46,7 +51,7 @@ class MPEx(object):
         self.debug = debug
         if(self.debug) :
             self.df = open("mpex_%d.txt" % time.time(),'w')
-        self.agent = Agent(reactor, pool=pool)
+        self.agent = Agent(reactor, pool=pool, connectTimeout=TIMEOUT/3)
 
 
     def command(self, command):
@@ -55,6 +60,7 @@ class MPEx(object):
         if (self.testdata):
             log.debug('returning testdata instead:%s',self.testdata)
             return self.testdata
+
         if self.passphrase == None: return None
         signed_data = self.gpg.sign(command, passphrase=self.passphrase)
         encrypted_ascii_data = self.gpg.encrypt(str(signed_data), self.mpex_fingerprint, passphrase=self.passphrase)
@@ -68,6 +74,7 @@ class MPEx(object):
                 }),
             body)
         d.addCallback(self.cbCommand) 
+        self.timeout = reactor.callLater(TIMEOUT, d.cancel)
         #TODO add retry in case of ResponseNeverReceived error, 
         #most likely caused by closing of persistent connection by server
         return d
@@ -75,7 +82,8 @@ class MPEx(object):
         log.info('Response: %s %s %s', response.version, response.code, response.phrase)
         log.debug('Response headers: %s', pformat(list(response.headers.getAllRawHeaders())))
         finished = Deferred()
-        response.deliverBody(StringRcv(finished))
+        timeout = reactor.callLater(TIMEOUT/2, finished.cancel)
+        response.deliverBody(StringRcv(finished,timeout))
         finished.addCallback(self.decrypt)
         return finished
     def decrypt(self,result):
@@ -90,6 +98,8 @@ class MPEx(object):
         if not self.gpg.verify(reply):
             log.error('Invalid Signature,ignoring data!')
             reply = None
+        if not self.timeout.active():
+            self.timeout.cancel()
         if reply == '': return None
         return reply
         
