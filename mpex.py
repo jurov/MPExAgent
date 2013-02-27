@@ -98,7 +98,7 @@ class MPEx(object):
         if not self.gpg.verify(reply):
             log.error('Invalid Signature,ignoring data!')
             reply = None
-        if not self.timeout.active():
+        if self.timeout.active():
             self.timeout.cancel()
         if reply == '': return None
         return reply
