@@ -312,17 +312,19 @@ class MPExAgent(MPEx):
         #log.debug('neworder:' + pformat(cmd))
         #@+<<neworderCb>>
         #@+node:jurov.20121005183137.2127: *4* <<neworderCb>>
-        def neworderCb(reply):
+        def neworderCb(res):
+            reply = res['message']
+            track = res['md5hash'][0:4]
             if "You don't hold enough assets" in reply:
                 log.error('Placing order %s failed with reply: %s',cmd,reply)
-                return {'result':'Failed', 'message':reply}
+                return {'result':'Failed', 'message':reply, 'track':track}
             if 'has been received and will be processed.' in reply:
                 data = processNewOrder(reply)
                 log.debug('Placing order %s success',cmd)
                 #When selling more than balance or buying more than BTC balance, the order amount is automatically adjusted and must be checked!
-                return {'result':'OK', 'order':data, 'message':reply}
+                return {'result':'OK', 'order':data, 'message':reply, 'track':track}
             log.error('placing order %s got unexpected reply:%s',cmd, reply)
-            return {'result':'Error', 'message':reply}
+            return {'result':'Error', 'message':reply, 'track':track}
 
         #@-<<neworderCb>>
         d = MPEx.command(self,cmd)
@@ -338,11 +340,11 @@ class MPExAgent(MPEx):
         """
         #@+<<statCb>>
         #@+node:jurov.20121005183137.2129: *4* <<statCb>>
-        def statCb(reply):
-            if reply is None:
+        def statCb(res):
+            if res is None:
                 log.error('STAT failed')
                 return False
-            return processStat(reply)
+            return processStat(res['message'])
             
         #@-<<statCb>>
         d = self.command('STAT')
@@ -358,11 +360,12 @@ class MPExAgent(MPEx):
         """
         #@+<<statjsonCb>>
         #@+node:jurov.20121028200650.2139: *4* <<statjsonCb>>
-        def statjsonCb(reply):
+        def statjsonCb(res):
+            reply = res['message']
             if reply is None:
                 log.error('STATJSON failed')
                 return False
-            return processStatJson(reply)
+            return processStatJson(res['message'])
             
         #@-<<statjsonCb>>
         d = self.command('STATJSON')
@@ -381,7 +384,8 @@ class MPExAgent(MPEx):
         cmd = 'CANCEL|%s' % orderid
         #@+<<cancelCb>>
         #@+node:jurov.20121005183137.2131: *4* <<cancelCb>>
-        def cancelCb(reply):
+        def cancelCb(res):
+            reply = res['message']
             if 'Mangled CANCEL order.' in reply:
                 log.error('Canceling order %s error: %s', orderid,  reply)
                 #send 'Failed' instead of Error because the cancel may be
@@ -413,7 +417,8 @@ class MPExAgent(MPEx):
         cmd = 'DEPOSIT|%d' % amount
         #@+<<depositCb>>
         #@+node:jurov.20121005183137.2133: *4* <<depositCb>>
-        def depositCb(reply):
+        def depositCb(res):
+            reply = res['message']
             if 'In order to make this deposit' in reply:
                 data = processDeposit(reply)
                 return {'result':'OK', 'data':data, 'message':reply}
@@ -437,7 +442,8 @@ class MPExAgent(MPEx):
         cmd = 'EXERCISE|%s|%d' % (mpsic,amount)
         #@+<<exerciseCb>>
         #@+node:jurov.20121005183137.2136: *4* <<exerciseCb>>
-        def exerciseCb(reply):
+        def exerciseCb(res):
+            reply = res['message']
             if('has been received and will be executed') in reply:
                 data = processExercise(reply)
                 return {'result':'OK', 'data':data, 'message':reply}

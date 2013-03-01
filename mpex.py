@@ -8,7 +8,8 @@ if __name__ == '__main__':
 import gnupg
 import urllib
 import sys
-import time
+import time,datetime
+import hashlib
 from twisted.internet import reactor
 from twisted.web.client import Agent, HTTPConnectionPool
 from twisted.web.http_headers import Headers
@@ -62,8 +63,12 @@ class MPEx(object):
             return self.testdata
 
         if self.passphrase == None: return None
-        signed_data = self.gpg.sign(command, passphrase=self.passphrase)
-        encrypted_ascii_data = self.gpg.encrypt(str(signed_data), self.mpex_fingerprint, passphrase=self.passphrase)
+        signed_data = str(self.gpg.sign(command, passphrase=self.passphrase))
+        m = hashlib.md5()
+        m.update(signed_data)
+        md5d = m.hexdigest()
+        log.debug('Signed:' + signed_data + "\nDigest/Track: " + md5d + "\n")
+        encrypted_ascii_data = self.gpg.encrypt(signed_data, self.mpex_fingerprint, passphrase=self.passphrase)
         data = urllib.urlencode({'msg' : str(encrypted_ascii_data)})
         body = FileBodyProducer(StringIO(data))
         d = self.agent.request(
@@ -73,20 +78,21 @@ class MPEx(object):
                 #'Connection': ['Keep-Alive'] #redundant in HTTP/1.1
                 }),
             body)
-        d.addCallback(self.cbCommand) 
+        def cbCommand(response):
+            log.info('Response: %s %s %s', response.version, response.code, response.phrase)
+            log.debug('Response headers: %s', pformat(list(response.headers.getAllRawHeaders())))
+            finished = Deferred()
+            timeout = reactor.callLater(TIMEOUT/2, finished.cancel)
+            response.deliverBody(StringRcv(finished,timeout))
+            finished.addCallback(self.decrypt, md5hash=md5d)
+            return finished
+
+        d.addCallback(cbCommand) 
         self.timeout = reactor.callLater(TIMEOUT, d.cancel)
         #TODO add retry in case of ResponseNeverReceived error, 
         #most likely caused by closing of persistent connection by server
         return d
-    def cbCommand(self,response):
-        log.info('Response: %s %s %s', response.version, response.code, response.phrase)
-        log.debug('Response headers: %s', pformat(list(response.headers.getAllRawHeaders())))
-        finished = Deferred()
-        timeout = reactor.callLater(TIMEOUT/2, finished.cancel)
-        response.deliverBody(StringRcv(finished,timeout))
-        finished.addCallback(self.decrypt)
-        return finished
-    def decrypt(self,result):
+    def decrypt(self,result,md5hash):
         if (self.debug) : 
             self.df.write(result)
             log.debug(result)
@@ -101,7 +107,7 @@ class MPEx(object):
         if self.timeout.active():
             self.timeout.cancel()
         if reply == '': return None
-        return reply
+        return dict(message=reply,md5hash=md5hash)
         
     def checkKey(self):
         keys = self.gpg.list_keys()
