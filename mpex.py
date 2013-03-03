@@ -8,7 +8,7 @@ if __name__ == '__main__':
 import gnupg
 import urllib
 import sys
-import time
+import time,datetime
 from twisted.internet import reactor
 from twisted.web.client import Agent, HTTPConnectionPool
 from twisted.web.http_headers import Headers
@@ -46,7 +46,7 @@ class MPEx(object):
     def __init__(self, debug=False, pool=None):
         self.gpg = gnupg.GPG()
         self.mpex_url = 'http://mpex.co'
-        self.mpex_fingerprint = 'F1B69921'
+        self._mpex_fingerprint = ['F1B69921','CFE0F3E1']
         self.passphrase = None
         self.debug = debug
         if(self.debug) :
@@ -63,7 +63,7 @@ class MPEx(object):
 
         if self.passphrase == None: return None
         signed_data = self.gpg.sign(command, passphrase=self.passphrase)
-        encrypted_ascii_data = self.gpg.encrypt(str(signed_data), self.mpex_fingerprint, passphrase=self.passphrase)
+        encrypted_ascii_data = self.gpg.encrypt(str(signed_data), self.mpex_fingerprint(), passphrase=self.passphrase)
         data = urllib.urlencode({'msg' : str(encrypted_ascii_data)})
         body = FileBodyProducer(StringIO(data))
         d = self.agent.request(
@@ -106,10 +106,13 @@ class MPEx(object):
     def checkKey(self):
         keys = self.gpg.list_keys()
         for key in keys:
-            if key['fingerprint'].endswith(self.mpex_fingerprint):
+            if key['fingerprint'].endswith(self.mpex_fingerprint()):
                 return True
         return False
 
+    def mpex_fingerprint(self):
+        """use/check current MPEx key depending on date"""
+        return self._mpex_fingerprint[0] if datetime.datetime.utcnow() < datetime.datetime(2013, 3, 10, 23, 59, 59) else self.mpex_fingerprint[1]
 def _processReply(reply):
     if reply == None:
         print 'Couldn\'t decode the reply from MPEx, perhaps you didn\'t sign the key? try running'
