@@ -118,7 +118,7 @@ class MPEx(object):
 
     def mpex_fingerprint(self):
         """use/check current MPEx key depending on date"""
-        return self._mpex_fingerprint[0] if datetime.datetime.utcnow() < datetime.datetime(2013, 3, 10, 23, 59, 59) else self.mpex_fingerprint[1]
+        return self._mpex_fingerprint[0] if datetime.datetime.utcnow() < datetime.datetime(2013, 3, 9, 23, 59, 59) else self._mpex_fingerprint[1]
 def _processReply(reply):
     if reply == None:
         print 'Couldn\'t decode the reply from MPEx, perhaps you didn\'t sign the key? try running'
