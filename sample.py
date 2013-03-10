@@ -23,7 +23,7 @@ def deserializeStat(data):
 
 def readonlyExample(mpexproxy,pp):
     #just a STAT call
-    statres = mpexproxy.stat()
+    statres = mpexproxy.statjson()
     pp.pprint(deserializeStat(statres))
 
 def placeCancelExample(mpexproxy,pp):
@@ -36,8 +36,8 @@ def placeCancelExample(mpexproxy,pp):
     res = mpexproxy.cancel(statres['orders'].keys()[0])
     pp.pprint(res)
 
-if __name__ == 'main':
-    mpexproxy = proxy.JSONRPCProxy('http://localhost:8007', '/jsonrpc')
+if __name__ == '__main__':
+    mpexproxy = proxy.JSONRPCProxy('http://localhost:8077', '/jsonrpc')
     pp = pprint.PrettyPrinter(indent=2)
     readonlyExample(mpexproxy,pp)
     #placeCancelExample(mpexproxy,pp)

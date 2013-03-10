@@ -150,6 +150,10 @@ def processStatJson(string):
     #parse json
     data = json.loads(string)
     #remove brain damage
+    chksums = {}
+
+    #@+others
+    #@+node:jurov.20130226173535.2345: *3* Header
     hdr = {}
     if "Header" in data:
         for item in data["Header"]:
@@ -162,7 +166,7 @@ def processStatJson(string):
                 data["timestamp"] = dt.isoformat()
         
     data["Header"] = hdr
-    chksums = {}
+    #@+node:jurov.20130226173535.2340: *3* Holdings
     holds = {}
     if "Holdings" in data:
         for item in data["Holdings"]:
@@ -176,7 +180,7 @@ def processStatJson(string):
             holds[key] = int(item[key])
             
     data["Holdings"] = holds
-
+    #@+node:jurov.20130226173535.2341: *3* Book
     orders = {}                
     if "Book" in data:            
         for item in data["Book"]:
@@ -195,7 +199,7 @@ def processStatJson(string):
                 raise ValueError("Order ID twice in Book: %s" % key)
             orders[key]=orddata
     data["Book"] = orders
-
+    #@+node:jurov.20130226173535.2342: *3* TradeHistory
     trades = []
     if "TradeHistory" in data:
         for item in data["TradeHistory"]:
@@ -218,7 +222,7 @@ def processStatJson(string):
             trades.append(tradedata)
             
     data["TradeHistory"] = trades
-    
+    #@+node:jurov.20130226173535.2343: *3* Dividends
     divs = []
     if "Dividends" in data:
         for item in data["Dividends"]:
@@ -232,8 +236,13 @@ def processStatJson(string):
             divdata['Date'] = dt.isoformat()
             divs.append(divdata)
     data["Dividends"] = divs
-    
-    #TODO exercises
+    #@+node:jurov.20130226173535.2344: *3* Exercises
+    #exercises
+    #"Exercises":[{"1361577601":{"MPSIC":"O.BTCUSD.C190T", "Quantity":"10", "TotalValue":"376231123"}},
+    #{"1361577601":{"MPSIC":"O.BTCUSD.C180T", "Quantity":"3", "TotalValue":"122718319"}},
+    #{"1361577601":{"MPSIC":"O.BTCUSD.C170T", "Quantity":"3", "TotalValue":"132567301"}},
+    #{"1361577601":{"MPSIC":"O.BTCUSD.C200T", "Quantity":"1", "TotalValue":"34340118"}},
+    #{"md5Checksum":"eb6c626b5be43b3968a2fe1a36f3076d"}]}
     exers = []
     if "Exercises" in data:
         for item in data["Exercises"]:
@@ -241,13 +250,50 @@ def processStatJson(string):
             if key == 'md5Checksum':
                 chksums["Exercises"] = item[key]
                 continue
-            #dt = datetime.fromtimestamp(int(key),tzutc())
-            #exdata = item[key]
-            #exdata['Quantity'] = int(tradedata['Quantity'])
-            #exdata['Price'] = int(tradedata['Price'])
-            #exdata['Date'] = dt.isoformat()
-            exers.append(item)
+            dt = datetime.fromtimestamp(int(key),tzutc())
+            exdata = item[key]
+            exdata['Quantity'] = int(exdata['Quantity'])
+            exdata['TotalValue'] = int(exdata['Price'])
+            exdata['Date'] = dt.isoformat()
+            exers.append(exdata)
     data["Exercises"] = exers
+    #@+node:jurov.20130226173535.2346: *3* OptionsCover
+    #srsly:
+    #"OptionsCover":[{"":{"MPSIC":"O.BTCUSD.C160T", "Quantity":"1", "TotalSum":"100000000"}},
+    #{"":{"MPSIC":"O.BTCUSD.P160T", "Quantity":"1", "TotalSum":"100000000"}}, 
+    optcover = []
+    if "OptionsCover" in data:
+        for item in data["OptionsCover"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                chksums["OptionsCover"] = item[key]
+                continue
+            #no date, key is empty here
+            #dt = datetime.fromtimestamp(int(key),tzutc())
+            odata = item[key]
+            odata['Quantity'] = int(odata['Quantity'])
+            odata['TotalSum'] = int(odata['TotalSum'])
+            #exdata['Date'] = dt.isoformat()
+            optcover.append(odata)
+    data["OptionsCover"] = optcover
+
+    #@+node:jurov.20130226173535.2348: *3* IMMCover
+    immcover = []
+    if "IMMCover" in data:
+        for item in data["IMMCover"]:
+            key = item.keys()[0]
+            if key == 'md5Checksum':
+                chksums["IMMCover"] = item[key]
+                continue
+            dt = datetime.fromtimestamp(int(key),tzutc())
+            icdata = item[key]
+            icdata['Quantity'] = int(icdata['Quantity'])
+            icdata['TotalSum'] = int(icdata['TotalSum'])
+            icdata['Date'] = dt.isoformat()
+            immcover.append(icdata)
+    data["IMMCover"] = immcover
+
+    #@-others
     
     data["md5Checksum"] = chksums
         
@@ -482,7 +528,6 @@ class RPCServer(ServerEvents):
         if hasattr(response,'id'):
             return ' '.join(str(x) for x in [response.id, response.result or response.error])
         else: 
-            #if isinstance(response,Exception):
             return str(response)
             
     #@+node:jurov.20121005183137.2143: *3* defer
