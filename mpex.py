@@ -45,8 +45,8 @@ class MPEx(object):
     testdata = None
     def __init__(self, debug=False, pool=None):
         self.gpg = gnupg.GPG()
+        self.mpex_url = 'http://mpex.co'
         self._mpex_fingerprint = ['F1B69921','CFE0F3E1']
-	self.mpex_url = 'http://63.247.64.96/~polimedi/bitcoin/'
         self.passphrase = None
         self.debug = debug
         if(self.debug) :
