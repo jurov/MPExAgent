@@ -253,7 +253,7 @@ def processStatJson(string):
             dt = datetime.fromtimestamp(int(key),tzutc())
             exdata = item[key]
             exdata['Quantity'] = int(exdata['Quantity'])
-            exdata['TotalValue'] = int(exdata['Price'])
+            exdata['TotalValue'] = int(exdata['TotalValue'])
             exdata['Date'] = dt.isoformat()
             exers.append(exdata)
     data["Exercises"] = exers
