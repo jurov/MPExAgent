@@ -164,6 +164,7 @@ def processStatJson(string):
                 dt = datetime.fromtimestamp(int(times[1]),tzutc())
                 dt = dt.replace(microsecond=int(Decimal(times[0])*1000000))
                 data["timestamp"] = dt.isoformat()
+                data["timestamp_obj"] = dt
         
     data["Header"] = hdr
     #@+node:jurov.20130226173535.2340: *3* Holdings
@@ -332,6 +333,12 @@ def processExercise(string):
 #@+node:jurov.20121005183137.2125: ** class MPExAgent
 class MPExAgent(MPEx):
     #@+others
+    #@+node:jurov.20130608121422.2498: *3* __init__
+    def __init__(self, **kw):
+        super(MPExAgent,self).__init__(**kw)
+        self.lastdate = False
+        if 'replaycheck' in kw and kw['replaycheck']:
+            self.lastdate = datetime.now(tzutc())
     #@+node:jurov.20121005183137.2126: *3* neworder
     def neworder(self,orderType,mpsic,amount,price = None):
         """ Place new order.
@@ -411,7 +418,17 @@ class MPExAgent(MPEx):
             if reply is None:
                 log.error('STATJSON failed')
                 return False
-            return processStatJson(res['message'])
+            value = processStatJson(res['message'])
+            dt = value["timestamp_obj"]
+            del value["timestamp_obj"]
+            if not self.lastdate:
+                return value
+            #replay check active - check if date increased since last statjson
+            if dt <= self.lastdate:
+                log.error('Replay check failed, previous value: %s, got: %s', self.lastdate, dt)
+                return False
+            self.lastdate = dt
+            return value
             
         #@-<<statjsonCb>>
         d = self.command('STATJSON')
@@ -547,7 +564,7 @@ class RPCServer(ServerEvents):
 def main():
     args = parse_args()
     try:
-        mpexagent = MPExAgent()
+        mpexagent = MPExAgent(replaycheck = True)
         mpexagent.passphrase = getpass("Enter your GPG passphrase: ")
         root = JSON_RPC().customize(RPCServer)
         root.eventhandler.agent = mpexagent
