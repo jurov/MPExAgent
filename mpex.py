@@ -47,7 +47,7 @@ class MPEx(object):
     def __init__(self, debug=False, pool=None, **kwargs):
         self.gpg = gnupg.GPG()
         self.mpex_url = 'http://mpex.co'
-        self._mpex_fingerprint = ['F1B69921','CFE0F3E1']
+        self._mpex_fingerprint = 'A57D509A'
         self.passphrase = None
         self.debug = debug
         if(self.debug) :
@@ -118,7 +118,7 @@ class MPEx(object):
 
     def mpex_fingerprint(self):
         """use/check current MPEx key depending on date"""
-        return self._mpex_fingerprint[0] if datetime.datetime.utcnow() < datetime.datetime(2013, 3, 9, 23, 59, 59) else self._mpex_fingerprint[1]
+        return self._mpex_fingerprint
 def _processReply(reply):
     if reply == None:
         print 'Couldn\'t decode the reply from MPEx, perhaps you didn\'t sign the key? try running'
