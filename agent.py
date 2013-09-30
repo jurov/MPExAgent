@@ -6,17 +6,6 @@
 #@@tabwidth -4
 #@+others
 #@+node:jurov.20121005183137.2120: ** mpexagent declarations
-import logging
-
-from twisted.python import log as twlog
-
-if __name__ == '__main__':
-    logging.basicConfig(filename='mpexagent.log',level=logging.DEBUG,format='%(asctime)s [%(name)s]:%(levelname)s:%(message)s')
-    observer = twlog.PythonLoggingObserver()
-    observer.start()
-
-log = logging.getLogger(__name__)
-
 from mpex import MPEx
 from pyparse import parseStat,parseDeposit,parseOrder,parseExercise
 from getpass import getpass
@@ -34,6 +23,12 @@ from dateutil.tz import tzutc
 import argparse 
 
 import json
+
+import logging,logging.config
+
+from twisted.python import log as twlog
+
+log = logging.getLogger(__name__)
 
 SATOSHI=Decimal(100000000)
 #@+node:jurov.20121030135122.2157: ** parse_args
@@ -566,8 +561,44 @@ class RPCServer(ServerEvents):
             d.addErrback(log.error)
         return d
     #@-others
+#@+node:jurov.20130930232116.2534: ** LOGGING
+#Default logging setup
+LOGGING = {
+    'version': 1,              
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(name)s]:%(levelname)s:%(message)s'
+        },
+    },
+    'handlers': {
+      'file': {
+        'class': 'logging.handlers.TimedRotatingFileHandler',
+        'level': 'DEBUG',
+        'formatter': 'standard',
+        'filename': 'mpexagent.log',
+        'when': 'd',
+        'utc': True,
+     },
+    },
+    'loggers': {
+        '': {                  
+            'handlers': ['file'],        
+            'level': 'DEBUG',
+        },
+        #gnupg likes to log sensitive material in debug mode
+        'gnupg': { 
+            'handlers': ['file'],
+            'level': 'INFO'
+        },
+    }
+}
 #@+node:jurov.20121005183137.2144: ** main
 def main():
+    logging.config.dictConfig(LOGGING)
+    observer = twlog.PythonLoggingObserver()
+    observer.start()
+
     args = parse_args()
     try:
         if args.mpex_url:
