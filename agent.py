@@ -128,7 +128,7 @@ def processStat(string):
             
     return data    
 #@+node:jurov.20121028200650.2140: ** processStatJson
-def processStatJson(string):
+def processStatJson(string, isFileName = False):
     """{"Header":[{"Name":"Juraj Variny"},{"Fingerprint":"BBB0A99950037551F533850A677ABD62D0AEE7D7"},{"DateTime":"Sunday the 28th of October 2012 at 07:11:07 PM"},{"Microtime":"0.32830100 1351451467"}],
     "Holdings":[{"CxBTC":"452929725"},
     {"S.MPOE":"481389"},
@@ -145,12 +145,16 @@ def processStatJson(string):
 {"md5Checksum":"5640523ac1976313c8a1b0af0c004d8f"}],
     "Exercises":[{"md5Checksum":"d41d8cd98f00b204e9800998ecf8427e"}]}
     """
-    #extract only the json part
-    startidx = string.index('{')
-    endidx = len(string) - string[::-1].index('}')
-    string = string[startidx:endidx]
-    #parse json
-    data = json.loads(string)
+    if isFileName:
+        data = json.load(open(string,'r'))
+    else:
+        #extract only the json part
+        startidx = string.index('{')
+        endidx = len(string) - string[::-1].index('}')
+        string = string[startidx:endidx]
+        #parse json
+        data = json.loads(string)
+        
     #remove brain damage
     chksums = {}
 
