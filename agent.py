@@ -42,6 +42,8 @@ def parse_args():
     #TODO argparse insists on enumerating all 65535 ports, so suppress help message
     #help="Listening port(default:8007)",
     parser.add_argument("-p","--port", help=argparse.SUPPRESS, type=int, choices=range(1, 65535),default=8007,required = False)
+    parser.add_argument("-l","--listen_addr", help="IP address to bind to(default: all interfaces)", default='',required = False)
+    parser.add_argument("-m","--mpex_url", help="MPEx HTTP URL", default=None,required = False)
     args = parser.parse_args()
     
     return args
@@ -564,13 +566,17 @@ class RPCServer(ServerEvents):
 def main():
     args = parse_args()
     try:
-        mpexagent = MPExAgent(replaycheck = True)
+        if args.mpex_url:
+            mpexagent = MPExAgent(replaycheck = True, mpexurl = args.mpex_url)
+        else:
+            mpexagent = MPExAgent(replaycheck = True)
         mpexagent.passphrase = getpass("Enter your GPG passphrase: ")
         root = JSON_RPC().customize(RPCServer)
         root.eventhandler.agent = mpexagent
-        site = server.Site(root)    
-        log.info('Listening on port %d...', args.port)
-        reactor.listenTCP(args.port, site)
+        site = server.Site(root)
+        bindaddr = '*:' if args.listen_addr == '' else args.listen_addr + ':'
+        log.info('Listening on %s%d...', bindaddr, args.port)
+        reactor.listenTCP(args.port, site, interface=args.listen_addr)
         reactor.run()
     except KeyboardInterrupt:
         print '^C received, shutting down server'

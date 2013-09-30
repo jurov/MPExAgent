@@ -44,9 +44,9 @@ class StringRcv(Protocol):
         self.finished.callback(self.data)
 class MPEx(object):
     testdata = None
-    def __init__(self, debug=False, pool=None, **kwargs):
+    def __init__(self, debug=False, pool=None, mpexurl = 'http://mpex.co', **kwargs):
         self.gpg = gnupg.GPG()
-        self.mpex_url = 'http://mpex.co'
+        self.mpex_url = mpexurl
         self._mpex_fingerprint = 'A57D509A'
         self.passphrase = None
         self.debug = debug
