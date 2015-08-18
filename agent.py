@@ -349,7 +349,7 @@ class MPExAgent(MPEx):
         price - unit price in satoshi
        Deferred result is dict in format: 
      {'message': decrypted MPEx reply incl. PGP signature, 
-     'data': result of processNewOrder() if order was successful. It is good to check this, because if your btc/item balance is not sufficient but you still have some balance, MPEx still accepts and modifies the order.
+     'order': result of processNewOrder() if order was successful. It is good to check this, because if your btc/item balance is not sufficient but you still have some balance, MPEx still accepts and modifies the order.
      'result': 'OK' if placing order was successful;
      'Failed': if order was syntactically correct, but failed due to business reason (no balance at all)
       'Error' otherwise}      
