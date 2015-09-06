@@ -367,9 +367,13 @@ class MPExAgent(MPEx):
         #@+<<neworderCb>>
         #@+node:jurov.20121005183137.2127: *4* <<neworderCb>>
         def neworderCb(res):
+            if not res:
+                return {'result':'Error'}
             reply = res['message']
             track = res['md5hash'][0:4]
-            if "You don't hold enough assets" in reply:
+            if "You don't hold enough assets" in reply or "Insufficient funds for this request" in reply\
+                    or "Malformed " in reply:
+                # we definitely know mpex rejected the order
                 log.error('Placing order %s failed with reply: %s',cmd,reply)
                 return {'result':'Failed', 'message':reply, 'track':track}
             if 'has been received and will be processed.' in reply:
@@ -378,6 +382,7 @@ class MPExAgent(MPEx):
                 #When selling more than balance or buying more than BTC balance, the order amount is automatically adjusted and must be checked!
                 return {'result':'OK', 'order':data, 'message':reply, 'track':track}
             log.error('placing order %s got unexpected reply:%s',cmd, reply)
+            # all other cases, the order may or may not came through
             return {'result':'Error', 'message':reply, 'track':track}
 
         #@-<<neworderCb>>
@@ -415,8 +420,7 @@ class MPExAgent(MPEx):
         #@+<<statjsonCb>>
         #@+node:jurov.20121028200650.2139: *4* <<statjsonCb>>
         def statjsonCb(res):
-            reply = res['message']
-            if reply is None:
+            if res is None or res.get('message') is None:
                 log.error('STATJSON failed')
                 return False
             value = processStatJson(res['message'])
