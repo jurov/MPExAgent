@@ -121,6 +121,7 @@ def processStat(string):
             div['amount'] = int(div['amount'] * SATOSHI)
             div['date'] = div['date'].isoformat()
             
+    data["message"] = string
     return data    
 #@+node:jurov.20121028200650.2140: ** processStatJson
 def processStatJson(string, isFileName = False):
@@ -424,6 +425,7 @@ class MPExAgent(MPEx):
                 log.error('STATJSON failed')
                 return False
             value = processStatJson(res['message'])
+            value['message'] = res['message']
             dt = value["timestamp_obj"]
             del value["timestamp_obj"]
             if not self.lastdate:
